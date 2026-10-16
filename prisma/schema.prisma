@@ -1,0 +1,59 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id                 String        @id @default(cuid())
+  name               String
+  email              String        @unique
+  slug               String        @unique
+  pixKey             String?       // Chave Pix manual (opcional/fallback)
+  gatewayProvider    String        @default("mercadopago") // mercadopago, asaas
+  gatewayAccessToken String?       // Credencial financeira individual do lojista (Access Token)
+  gatewayUserId      String?       // ID do usuário/conta no gateway
+  gatewayPublicKey   String?       // Chave pública do lojista
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  services           Service[]
+  appointments       Appointment[]
+}
+
+model Service {
+  id           String        @id @default(cuid())
+  name         String
+  duration     Int           // Duração em minutos (ex: 45)
+  price        Float         // Preço do serviço (ex: 55.00)
+  description  String?
+  badge        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  appointments Appointment[]
+}
+
+model Appointment {
+  id            String      @id @default(cuid())
+  customerName  String
+  customerPhone String
+  date          DateTime
+  status        String      @default("pending_pix") // pending_pix, confirmed, completed, cancelled
+  depositAmount Float       @default(30.00)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
